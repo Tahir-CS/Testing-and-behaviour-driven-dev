@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+
 from .config import Config
 
 # Global SQLAlchemy instance (initialized with app in create_app)

@@ -4,36 +4,24 @@
 # real Selenium UI interactions when you add the admin UI.
 
 import os
+
+from behave import given, then, when
 import requests
-from behave import given, when, then
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
-
-
-@given("the service is running")
-def step_service_running(context):
-    resp = requests.get(f"{BASE_URL}/health", timeout=5)
-    assert resp.status_code == 200
-
-
-@given("the catalog is initialized with sample products")
-def step_seed_catalog(context):
-    # seed a few products idempotently
-    for name, category, available in [
-        ("Alpha", "A", True),
-        ("Beta", "B", False),
-        ("Gamma", "A", True),
-    ]:
-        requests.post(
-            f"{BASE_URL}/products",
-            json={"name": name, "category": category, "available": available},
-            timeout=5,
-        )
 
 
 @given('a product named "{name}" exists')
 def step_product_exists(context, name):
     requests.post(f"{BASE_URL}/products", json={"name": name}, timeout=5)
+
+
+@when('I view the details for product "{name}"')
+def step_view_product_details(context, name):
+    resp = requests.get(f"{BASE_URL}/products", params={"name": name}, timeout=5)
+    items = resp.json()
+    assert items
+    context.product_id = items[0]["id"]
 
 
 @when('I create a new product named "{name}" in category "{category}" that is available')
@@ -49,14 +37,6 @@ def step_create_product(context, name, category):
 def step_see_product_in_list(context, name):
     resp = requests.get(f"{BASE_URL}/products", timeout=5)
     assert any(p["name"] == name for p in resp.json())
-
-
-@when('I view the details for product "{name}"')
-def step_view_product_details(context, name):
-    resp = requests.get(f"{BASE_URL}/products", params={"name": name}, timeout=5)
-    items = resp.json()
-    assert items
-    context.product_id = items[0]["id"]
 
 
 @then('I should see the product details for "{name}"')
@@ -75,6 +55,12 @@ def step_rename_product(context, old, new):
     context.last_resp = requests.put(
         f"{BASE_URL}/products/{pid}", json={"name": new}, timeout=5
     )
+
+
+@then('I should see the product name as "{name}"')
+def step_assert_name(context, name):
+    assert context.last_resp.status_code in (200, 201)
+    assert context.last_resp.json()["name"] == name
 
 
 @then('I should see the product name as "{name}"')
